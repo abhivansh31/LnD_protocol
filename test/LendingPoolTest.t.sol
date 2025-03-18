@@ -14,8 +14,7 @@ contract LendingPoolTest is Test {
     DeployLendingPool deployer;
     address token;
     address weth;
-    address tokenPriceFeed;
-    address wethPriceFeed;
+    address user = makeAddr("user");
     uint256 constant AMOUNT = 100 * 10 ** 18;
     uint256 constant funds = 10 * 10 ** 18;
 
@@ -24,33 +23,19 @@ contract LendingPoolTest is Test {
         deployer = new DeployLendingPool();
         token = helper.getConfig().token;
         weth = helper.getConfig().weth;
-        console.log(weth);
-        console.log(token);
-        tokenPriceFeed = helper.getConfig().tokenPriceFeed;
-        wethPriceFeed = helper.getConfig().wethPriceFeed;
         pool = deployer.run();
-        console.log(address(pool));
-        ERC20Mock(weth).mint(address(this), AMOUNT);
-        ERC20Mock(token).mint(address(this), AMOUNT);
-        console.log(address(this));
-        console.log(IERC20(token).balanceOf(address(this)));
-        console.log(IERC20(weth).balanceOf(address(this)));
-        ERC20Mock(weth).approve(address(pool), AMOUNT);
-        ERC20Mock(token).approve(address(pool), AMOUNT);
-        console.log(IERC20(weth).allowance(address(this), address(pool)));
-        console.log(IERC20(token).allowance(address(this), address(pool)));
+        ERC20Mock(weth).mint(user, AMOUNT);
+        ERC20Mock(token).mint(user, AMOUNT);
+        ERC20Mock(weth).mint(address(pool), AMOUNT);
+        ERC20Mock(token).mint(address(pool), AMOUNT);
     }
 
-    function testFuzzDepositCollateral(uint256 amount) public {
-        amount = bound(amount, 10 ether, 50 ether);
-        ERC20Mock(weth).approve(address(pool), amount);
-        console.log(amount);
-        console.log(IERC20(weth).balanceOf(address(this)));
-        console.log(IERC20(weth).allowance(address(this), address(pool)));
-        
-        pool.depositCollateralAndBorrowToken(amount, amount/3);
-        assert(pool.getDepositedCollateral() == amount);
-
-    }
-    
+    function testAddLiquidity(uint256 amount) public{
+        amount = bound(amount, 0, funds/2);
+        vm.startPrank(user);
+        IERC20(weth).approve(address(pool), amount);
+        pool.addLiquidity(amount);
+        vm.stopPrank();
+        assert(pool.getLPTokens(user) > 0);
+    } 
 }

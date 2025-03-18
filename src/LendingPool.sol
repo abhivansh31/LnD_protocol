@@ -339,4 +339,10 @@ contract LendingPool is ReentrancyGuard, ERC20 {
     function getTotalLiquidityAdded() public view returns(uint256) {
         return totalLiquidityAdded;
     }
+
+    /// @dev This function gives the LP tokens to the liquidity providers.
+
+    function getLPTokens(address user) public view returns(uint256) {
+        return balanceOf(user);
+    }
 }
