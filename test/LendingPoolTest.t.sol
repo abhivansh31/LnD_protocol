@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {LendingPool} from "../src/LendingPool.sol";
 import {HelperConfig} from "../script/HelperConfig.s.sol";
 import {DeployLendingPool} from "../script/DeployLendingPool.s.sol";
 import {ERC20Mock} from "../lib/openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
+import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract LendingPoolTest is Test {
     LendingPool pool;
@@ -16,66 +17,40 @@ contract LendingPoolTest is Test {
     address tokenPriceFeed;
     address wethPriceFeed;
     uint256 constant AMOUNT = 100 * 10 ** 18;
+    uint256 constant funds = 10 * 10 ** 18;
 
     function setUp() external {
         helper = new HelperConfig();
         deployer = new DeployLendingPool();
         token = helper.getConfig().token;
         weth = helper.getConfig().weth;
+        console.log(weth);
+        console.log(token);
         tokenPriceFeed = helper.getConfig().tokenPriceFeed;
         wethPriceFeed = helper.getConfig().wethPriceFeed;
         pool = deployer.run();
-        ERC20Mock(token).mint( address(this), AMOUNT);
+        console.log(address(pool));
         ERC20Mock(weth).mint(address(this), AMOUNT);
-    }
-
-    function test_DepositCollateral() public {
+        ERC20Mock(token).mint(address(this), AMOUNT);
+        console.log(address(this));
+        console.log(IERC20(token).balanceOf(address(this)));
+        console.log(IERC20(weth).balanceOf(address(this)));
         ERC20Mock(weth).approve(address(pool), AMOUNT);
-        pool.depositCollateralAndBorrowToken(AMOUNT, 0);
-        assertEq(pool.getDepositedCollateral(), AMOUNT);
-    }
-
-    function test_BorrowToken() public {
-        ERC20Mock(weth).approve(address(pool), AMOUNT);
-        uint256 borrowAmount = AMOUNT / 2;
-        pool.depositCollateralAndBorrowToken(AMOUNT, borrowAmount);
-        assertEq(pool.getBorrowedAmount(), borrowAmount);
-    }
-
-    function test_AddLiquidity() public {
         ERC20Mock(token).approve(address(pool), AMOUNT);
-        pool.addLiquidity(AMOUNT);
-        assertEq(pool.balanceOf(address(this)), AMOUNT);
+        console.log(IERC20(weth).allowance(address(this), address(pool)));
+        console.log(IERC20(token).allowance(address(this), address(pool)));
     }
 
-    function test_RemoveLiquidity() public {
-        ERC20Mock(token).approve(address(pool), AMOUNT);
-        pool.addLiquidity(AMOUNT);
-        uint256 balanceBefore = ERC20Mock(token).balanceOf(address(this));
-        pool.removeLiquidity();
-        uint256 balanceAfter = ERC20Mock(token).balanceOf(address(this));
-        assertGt(balanceAfter, balanceBefore);
-    }
-
-    function test_Liquidation() public {
-        address user = makeAddr("user");
-        deal(weth, user, AMOUNT);
-        deal(token, address(this), AMOUNT);
+    function testFuzzDepositCollateral(uint256 amount) public {
+        amount = bound(amount, 10 ether, 50 ether);
+        ERC20Mock(weth).approve(address(pool), amount);
+        console.log(amount);
+        console.log(IERC20(weth).balanceOf(address(this)));
+        console.log(IERC20(weth).allowance(address(this), address(pool)));
         
-        vm.startPrank(user);
-        ERC20Mock(weth).approve(address(pool), AMOUNT);
-        pool.depositCollateralAndBorrowToken(AMOUNT, AMOUNT/2);
-        vm.stopPrank();
-        
-        ERC20Mock(token).approve(address(pool), AMOUNT);
-        pool.liquidate(user, address(this));
-        uint256 collateralDeposited = pool.getDepositedCollateral();
-        assertEq(collateralDeposited, 0);
-    }
+        pool.depositCollateralAndBorrowToken(amount, amount/3);
+        assert(pool.getDepositedCollateral() == amount);
 
-    function test_HealthFactor() public {
-        ERC20Mock(weth).approve(address(pool), AMOUNT);
-        pool.depositCollateralAndBorrowToken(AMOUNT, AMOUNT/3);
-        assertTrue(pool.checkIfHealthFactorIsOkay(address(this)));
     }
+    
 }

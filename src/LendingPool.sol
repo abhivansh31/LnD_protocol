@@ -333,4 +333,10 @@ contract LendingPool is ReentrancyGuard, ERC20 {
     function getDepositedCollateral() public view returns (uint256) {
         return userToUserDetails[msg.sender].amountCollateralDeposited;
     }
+
+    /// @dev This function gives the total liquidity added in the pool by the liquidity providers.
+
+    function getTotalLiquidityAdded() public view returns(uint256) {
+        return totalLiquidityAdded;
+    }
 }
